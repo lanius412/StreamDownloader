@@ -1,0 +1,6 @@
+client-id : abcdefg123456
+token : qwerty98765
+
+##Keep the Space
+##Replace abcdef~  and  qwerty~  to your client-id and token
+##Rename the file name 'key_twitch_sample' -> 'key_twitch'

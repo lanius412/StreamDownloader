@@ -1,0 +1,5 @@
+developerKey : abedefg123456
+
+##Keep the Space
+##Replace abcdef~ to your developer key
+##Rename the file name 'key_youtube_sample' -> 'key_youtube'
