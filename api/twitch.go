@@ -1,20 +1,16 @@
 package api
 
 import (
-	"bufio"
-	"embed"
-	"encoding/json"
-	"io"
-	"log"
 	"net/http"
-	"strings"
-	"time"
+	"encoding/json"
+	"os"
+	"io"
+	"fmt"
+	"log"	
 
-	"StreamDownloader/dl"
+	"StreamDownloader/dl_convert"
+	"StreamDownloader/env"
 )
-
-//go:embed keys/key_twitch.txt
-var f embed.FS
 
 type Stream struct {
 	Data []struct {
@@ -24,9 +20,10 @@ type Stream struct {
 }
 
 func Twitch(channelName string) {
-	log.Println("Search for " + channelName + " livestreaming on Twitch")
+	fmt.Println("Search for " + channelName + " livestreaming on Twitch")
 
-	clientId, token := load_env()
+	_, clientId, token := env.Load_env()
+
 	const url = "https://api.twitch.tv/helix/streams?user_login="
 
 	client := &http.Client{}
@@ -39,46 +36,26 @@ func Twitch(channelName string) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 	s := Stream{}
 	err = json.Unmarshal(body, &s)
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	var liveUrl = "https://www.twitch.tv/" + channelName
 
 	if len(s.Data) == 0 {
-		log.Println(channelName + " has no live streaming")
+		fmt.Println(channelName + " has no live streaming")
+		os.Exit(0)
 	} else {
-		log.Print(s.Data[0].Title)
-		date := time.Now().Format("2006-01-02 15_04")
+		fmt.Print("-> " + s.Data[0].Title)
 		streamId := s.Data[0].StreamId
-		dl.LiveStream_dl(liveUrl, date+"-"+streamId)
+		dl_convert.LiveStream_dl(liveUrl, streamId)
 	}
-}
-
-func load_env() (clientId string, token string) {
-	file, err := f.Open("keys/key_twitch.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	keys := []string{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		keys = append(keys, scanner.Text())
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-	clientId = keys[0][strings.LastIndex(keys[0], " ")+1:]
-	token = keys[1][strings.LastIndex(keys[1], " ")+1:]
-
-	return clientId, token
 }

@@ -1,25 +1,22 @@
 package api
 
 import (
-	_ "embed"
-	"log"
 	"net/http"
-	"strings"
-	"time"
+	"os"
+	"fmt"
+	"log"
 
 	"google.golang.org/api/googleapi/transport"
 	"google.golang.org/api/youtube/v3"
 
-	"StreamDownloader/dl"
+	"StreamDownloader/dl_convert"
+	"StreamDownloader/env"
 )
 
-//go:embed keys/key_youtube.txt
-var developerKey string
-
 func Youtube(channelName string) {
-	log.Println("Search for " + channelName + " livestreaming on Youtube")
+	fmt.Println("Search for " + channelName + " livestreaming on Youtube")
 
-	developerKey = developerKey[strings.LastIndex(developerKey, " ")+1:]
+	developerKey, _, _ := env.Load_env()
 
 	client := &http.Client{
 		Transport: &transport.APIKey{Key: developerKey},
@@ -37,22 +34,19 @@ func Youtube(channelName string) {
 
 	var channelId = channelResp.Items[0].Id.ChannelId
 
-	liveCall := service.Search.List([]string{"id", "snippet"}).ChannelId(channelId).Type("video").EventType("Live").MaxResults(1)
-	liveResp, err := liveCall.Do()
+	searchLiveCall := service.Search.List([]string{"id", "snippet"}).ChannelId(channelId).Type("video").EventType("Live").MaxResults(1)
+	searchLiveResp, err := searchLiveCall.Do()
 	if err != nil {
 		log.Fatal("error Receive Response from Youtube API(LiveUrl): %w", err)
 	}
-	streamId := liveResp.Items[0].Id.VideoId
 
-	var liveUrl = "https://www.youtube.com/watch?v=" + streamId
-
-	snippet := liveResp.Items[0].Snippet
-	if isLive := snippet.LiveBroadcastContent; isLive == "live" {
-		log.Println(snippet.Title)
-		date := time.Now().Format("2006-01-02 15_04")
-		dl.LiveStream_dl(liveUrl, date+"-"+streamId)
+	if searchLiveResp.PageInfo.TotalResults == 0 {
+		fmt.Println(channelName + " has no live streaming")
+		os.Exit(0)
 	} else {
-		log.Println(channelName + " has no live streaming")
+		var streamId = searchLiveResp.Items[0].Id.VideoId
+		var liveUrl = "https://www.youtube.com/watch?v=" + streamId
+		fmt.Println("-> " + searchLiveResp.Items[0].Snippet.Title)
+		dl_convert.LiveStream_dl(liveUrl, streamId)
 	}
-
 }
